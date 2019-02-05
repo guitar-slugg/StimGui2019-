@@ -1,0 +1,72 @@
+
+StimGui READ ME:
+
+Requires MATLAB >= 2015a
+Designed for use with a TDT RZ6 processing unit. 
+
+The overall goal of this code is to set up a workable and flexible GUI framework, 
+that allows easy future changes/modifications. 
+
+The Gui is launched by calling StimGui from the command line in MATLAB.
+
+From there, you can run various procedures and collect data in a flexible way. 
+
+
+
+
+The GUI consists of these parts:
+
+StimGui.m:  This is the main class for the program, it handles tyeing together the various parts, 
+and interacting with the user. 
+
+StimGuiProcedures.m: This class contains a bunch of static methods for getting data. These are usually called from StimGui, 
+but they don't have to be. Additional methods/procedures can be added by users as needed. 
+
+StimGuiUserSettings.m: This class just holds fields for user settings. These settings are loaded by StimGui and usually passed
+to a procedure in StimGuiProcedures.m. StimGui loads all saved user settings files in the UserSettings folder. So, if you would like to 
+add or remove a settings file, that folder is the place to do it. 
+
+TDTDrivers.m: This class contains wrappers for interacting with an active .rcx circuit, running on the TDT box. 
+The methods contained in this class can be used to put together a procedure, like the ones found in StimGuiProcedures. 
+
+rcxCircuit.rcx: This in a circuit built with TDT's Open_Ex software package. This circuit is translated into code that runs 
+on the TDT box. All low level interaction with the TDT box ultimately depends on this circuit. All other code is basically 
+just wrapping this code. 
+
+filterA.m: a function to produce "A weighting" filter weights. 
+
+Calibrations folder: This folder contains .mat files generated as calibrations. 
+
+
+
+
+
+
+-Ken Ledford 
+Jan 19 2019 
+1LedfordK@gmail.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
