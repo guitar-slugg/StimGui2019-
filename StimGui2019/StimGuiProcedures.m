@@ -100,6 +100,7 @@ classdef StimGuiProcedures
            end
             %off 
             TDT.setTag('amplitude', 0);  %volts
+            TDT.setTag('amp_B', 0);  %volts
             
         end    
         
@@ -524,6 +525,7 @@ classdef StimGuiProcedures
            end
             %off 
             TDT.setTag('amplitude', 0);  %volts
+            TDT.setTag('amp_B', 0);  %volts
             
             %average
             if avgFlag
