@@ -58,6 +58,10 @@ classdef StimGuiProcedures
                         while TDT.readCounter('in_i') <= acq_samples;
                         end
                         
+                    case 4  
+                        while TDT.readCounter('in_i_Optical') <= acq_samples;
+                        end
+                        
                 end
                 
                 %acquire
@@ -69,6 +73,9 @@ classdef StimGuiProcedures
                     case 3
                         acquired_signal(1,:) = TDT.readBuffer('in', acq_offset, acq_samples)./gain;
                         acquired_signal(2,:) = TDT.readBuffer('in_B', acq_offset, acq_samples)./gain;
+                    case 4     
+                        acquired_signal = TDT.readBuffer('in_Optical', acq_offset, acq_samples)./gain;
+
                 end
                 
                 switch SETTINGS.channel_out
@@ -76,7 +83,6 @@ classdef StimGuiProcedures
                         input_signal = TDT.readBuffer('input_sigA', 0, acq_samples);
                     case 2
                         input_signal = TDT.readBuffer('input_sigB', 0, acq_samples);
-                       
                     case 3
                         input_signal(1,:) = TDT.readBuffer('input_sigA', 0, acq_samples);
                         input_signal(2,:) = TDT.readBuffer('input_sigB', 0, acq_samples);
@@ -90,12 +96,19 @@ classdef StimGuiProcedures
                 if SETTINGS.display_output && SETTINGS.display_input
                     plot(ax1, time_vector, acquired_signal);
                     plot(ax2, time_vector, input_signal);
-                elseif SETTINGS.display_output 
+                elseif SETTINGS.display_output
                     plot(ax1, time_vector, acquired_signal);
                 elseif SETTINGS.display_input
                     plot(ax2, time_vector, input_signal);
-                end     
-                drawnow 
+                end
+                
+                if ~SETTINGS.auto_scale
+                    lims1 = strsplit(SETTINGS.ylims1, ':');
+                    lims2 = strsplit(SETTINGS.ylims2, ':');
+                    set(ax1, 'ylim', [str2double(lims1{1}) str2double(lims1{2})]);
+                    set(ax2, 'ylim', [str2double(lims2{1}) str2double(lims2{2})]);
+                end
+                drawnow
 
            end
             %off 
@@ -179,9 +192,7 @@ classdef StimGuiProcedures
 
         end    
         
-        
 
-        
         function DATA = tuningProcedure(TDT, SETTINGS, args, calibration, ax1, ax2)
             
             %unpack
@@ -192,6 +203,7 @@ classdef StimGuiProcedures
             averges = args.averges;
             alternate_laser = args.alternate_laser;
             shuffle = args.shuffle;
+            startWithZeros = args.startWithZeros; 
             
             divisions=1/divisions;
             num_steps=octaves/divisions;
@@ -235,7 +247,6 @@ classdef StimGuiProcedures
                     
                     %write settings
                     volts = calibration(round(level),round(freq));
-                    SETTINGS.stim_voltage_V = volts;
                     
                     if alternate_laser && doIt 
                         SETTINGS.laser_on = true; 
@@ -245,9 +256,14 @@ classdef StimGuiProcedures
                         doIt = true;
                     end     
                     
-                    
                     for ind_avg = 1:averges
                         
+                        %pad with zeros for first avg 
+                        if startWithZeros && (ind_avg==1)
+                            SETTINGS.stim_voltage_V = 0;
+                        else
+                            SETTINGS.stim_voltage_V = volts;
+                        end     
                         
                         [dat, inSig] = StimGuiProcedures.getData(TDT,SETTINGS,1,ax1, ax2);
                         
@@ -257,7 +273,6 @@ classdef StimGuiProcedures
                         if ~RUNNING
                             break
                         end
-                        
                     end
                     
                     if ~RUNNING
@@ -273,9 +288,32 @@ classdef StimGuiProcedures
             
             %need to un-shuffle 
             if shuffle
-            
-             
                 
+                %find inds to un-shuffle 
+                [~,freq_inds] = ismember(freq_range_orig, freq_range);
+                [~,db_inds] = ismember(db_range_orig,levels);
+                
+                unshuffled_data = data; 
+                unshuffled_inputs = input; 
+                
+                for ind_level = 1:length(levels)
+                    for ind_freq = 1:length(freq_range)
+                        %find waht inds of shuffed data we need
+                        ind_f_shuff = freq_inds(ind_freq);
+                        ind_l_shuff = db_inds(ind_level); 
+                        
+                        for ind_avg = 1:averges
+                            %index into sorted data 
+                            unshuffled_data(ind_freq, ind_level,ind_avg,: ) = data(ind_f_shuff,ind_l_shuff,ind_avg,:);
+                            unshuffled_inputs(ind_freq, ind_level,ind_avg,:) = input(ind_f_shuff,ind_l_shuff,ind_avg,:);
+                        end 
+                    end
+                end
+                
+                data = unshuffled_data; 
+                input = unshuffled_inputs; 
+                freq_range = freq_range(freq_inds);
+                levels = levels(db_inds);
             end 
             
             DATA.data = data;
@@ -283,9 +321,71 @@ classdef StimGuiProcedures
             DATA.freq_range = freq_range; 
             DATA.levels = levels; 
             DATA.args = args;     
-            
         end 
         
+        
+        function DATA = laserStimTrain(TDT,SETTINGS, args, ax1, ax2)
+            
+            global RUNNING
+            RUNNING=1;
+            
+            
+            laser_on_ms = args.laser_on ;
+            laser_off_ms = args.laser_off ;
+            laser_reps = args.laser_reps ;
+            total_time_ms = (laser_on_ms+laser_off_ms); 
+            
+            acq_samples=  TDT.ms2Samples(total_time_ms);
+            
+            data_hold = zeros(laser_reps, acq_samples);
+            inputs_hold = zeros(laser_reps, acq_samples);
+            
+            SETTINGS.laser_on =true;
+            SETTINGS.laser_on_time_ms  = laser_on_ms;
+            SETTINGS.laser_delay_ms =0;
+            SETTINGS.acquire_length_ms = total_time_ms; 
+            SETTINGS.display_output = false;
+            SETTINGS.display_input = false;
+            
+            for ind_rep = 1: laser_reps
+                
+                if ~RUNNING
+                    break
+                end
+                
+                [dat, inSig] = StimGuiProcedures.getData(TDT,SETTINGS,1,ax1, ax2);
+                data_hold(ind_rep,:) = dat;
+                inputs_hold(ind_rep,:) = inSig;
+
+            end
+
+            data=[];
+            inputs =[]; 
+            for ind_rep = 1: laser_reps
+                data = [data data_hold(ind_rep,:)];
+                inputs = [inputs inputs_hold(ind_rep,:)];
+            end     
+                
+            %display
+            time_vector = (1:length(data)).*TDT.dt;
+            
+            plot(ax1, time_vector, data);
+            plot(ax2, time_vector, inputs);
+
+            if ~SETTINGS.auto_scale
+                lims1 = strsplit(SETTINGS.ylims1, ':');
+                lims2 = strsplit(SETTINGS.ylims2, ':');
+                set(ax1, 'ylim', [str2double(lims1{1}) str2double(lims1{2})]);
+                set(ax2, 'ylim', [str2double(lims2{1}) str2double(lims2{2})]);
+            end
+            drawnow
+            
+            DATA.data = data;
+            DATA.inputs = inputs;
+            DATA.args = args;
+
+        end      
+
         
         function DATA = itdProc(TDT,SETTINGS, itdLevels, averages, ax1, ax2)
             
@@ -321,8 +421,6 @@ classdef StimGuiProcedures
             DATA.inputs = inputs;
             DATA.itdLevels = itdLevels;
             DATA.averages = averages;
-
-
         end 
         
         function DATA = ildProc(TDT,SETTINGS, ildLevels, averages, calibration,dbCenter, freq , ax1, ax2)
@@ -368,8 +466,7 @@ classdef StimGuiProcedures
             DATA.inputs = inputs;
             DATA.ildLevels = ildLevels;
             DATA.averages = averages;
-            
-            
+
         end 
         
         
@@ -393,7 +490,7 @@ classdef StimGuiProcedures
             end     
             
             
-            SETTINGS.channel_out=1; 
+            SETTINGS.channel_out=2; 
             ipsiData = zeros(averages, acq_samples);
             for ind_avg = 1:averages
                 
@@ -439,14 +536,12 @@ classdef StimGuiProcedures
             acq_offset = StimGuiProcedures.acqOffset;
             gain = StimGuiProcedures.computeGain(SETTINGS);
             
-            
             switch SETTINGS.channel_in
                 case 3
                     data = zeros(n_acqs,acq_samples*2);
                 otherwise
                     data = zeros(n_acqs,acq_samples);
             end
-            
             
             global RUNNING
             RUNNING=1;
@@ -473,6 +568,9 @@ classdef StimGuiProcedures
                         while TDT.readCounter('in_i') <= acq_samples;
                         end
                         
+                    case 4     
+                        while TDT.readCounter('in_i_Optical') <= acq_samples;
+                        end
                 end
                 
                 
@@ -485,6 +583,9 @@ classdef StimGuiProcedures
                     case 3
                         acquired_signal(1,:) = TDT.readBuffer('in', acq_offset, acq_samples)./gain;
                         acquired_signal(2,:) = TDT.readBuffer('in_B', acq_offset, acq_samples)./gain;
+                    case 4 
+                        acquired_signal = TDT.readBuffer('in_Optical', acq_offset, acq_samples)./gain;
+                        
                 end
                 
                 switch SETTINGS.channel_out
@@ -511,9 +612,15 @@ classdef StimGuiProcedures
                     plot(ax1, time_vector, acquired_signal);
                 elseif SETTINGS.display_input
                     plot(ax2, time_vector, input_signal);
+                end  
+                
+                if ~SETTINGS.auto_scale
+                    lims1 = strsplit(SETTINGS.ylims1, ':');
+                    lims2 = strsplit(SETTINGS.ylims2, ':');
+                    set(ax1, 'ylim', [str2double(lims1{1}) str2double(lims1{2})]);
+                    set(ax2, 'ylim', [str2double(lims2{1}) str2double(lims2{2})]);
                 end     
                 drawnow 
-                
                 
                 switch SETTINGS.channel_in
                     case 3
@@ -532,17 +639,15 @@ classdef StimGuiProcedures
                 data = mean(data,1);
             end
             
-            
-            switch SETTINGS.channel_in
-                case 3
-                    plot(ax1, 1:length(acquired_signal)*2, data);
-                otherwise
-                    plot(ax1, time_vector, data);
-            end
-            
-            
+%             switch SETTINGS.channel_in
+%                 case 3
+%                     plot(ax1, 1:length(acquired_signal)*2, data);
+%                 otherwise
+%                     plot(ax1, time_vector, data);
+%             end
+%             
         end
-        
+
         
         function splCheck(TDT, SETTINGS)
             
@@ -558,9 +663,10 @@ classdef StimGuiProcedures
                 SETTINGS.stimulus_stop_ms = 1;
                 SETTINGS.display_output=false;
                 SETTINGS.display_input=false;
-                SETTINGS.stim_voltage_V=0; 
+                SETTINGS.stim_voltage_V=0;
+                SETTINGS.display_output = true;
                 dBs= zeros(averages,1);
-
+                
                 disp('running..')
                 for i = 1:averages
                     traces(i,:) = StimGuiProcedures.getData(TDT,SETTINGS, 1, gca, gca);
@@ -584,75 +690,179 @@ classdef StimGuiProcedures
                 disp('mean:')
                 mean(dBs)
                 
-                
-        end     
+        end
         
         
-
+        
         function Levels = makeCalibration(TDT, SETTINGS, ax1, ax2)
             
             info = inputdlg({'low freq:','high freq:','freq interval','low dB:','high dB','dB interval'}, 'Settings', ...
-                    [1 30;1 30;1 30;1 30;1 30;1 30], {'500','20000','250','10','90','5'});
-                freq_array = str2double(info{1}):str2double(info{3}):str2double(info{2});
-                db_array = str2double(info{4}):str2double(info{6}):str2double(info{5});
+                [1 30;1 30;1 30;1 30;1 30;1 30], {'500','20000','250','10','90','5'});
+            freq_array = str2double(info{1}):str2double(info{3}):str2double(info{2});
+            db_array = str2double(info{4}):str2double(info{6}):str2double(info{5});
             
             
             Levels = zeros(100,20000);  % to return the voltage at db,freq
-            max_voltage =2; 
+            max_voltage =2;
+            
+            SETTINGS.stimulus_length_ms = 100;
+            SETTINGS.acquire_length_ms = 5;
+            SETTINGS.stimulus_start_ms = 0;
+            SETTINGS.stimulus_stop_ms = 100;
+            
+            global RUNNING
+            RUNNING=1;
+            
+            SETTINGS.stim_voltage_V=0.1;
+            SETTINGS.stim_type =3;
+            
+            %calibrate click 
+            for j = 1:length(db_array)
+                sig = StimGuiProcedures.getData(TDT, SETTINGS,1, ax1, ax2);
+                db_got=20.*log10(sqrt(mean(sig.^2))/(20e-6));
+                    
+                    while(db_got <= db_array(j)*0.98 || db_got >= db_array(j)*1.02)
+                        
+                        if ~RUNNING
+                            break
+                        end
+                        
+                        if(db_got <= db_array(j))
+                            SETTINGS.stim_voltage_V =SETTINGS.stim_voltage_V*1.11;
+                            if(SETTINGS.stim_voltage_V>=max_voltage)
+                                SETTINGS.stim_voltage_V=max_voltage;
+                                break
+                            end
+                        end
+                        if(db_got >= db_array(j))
+                            SETTINGS.stim_voltage_V =SETTINGS.stim_voltage_V*0.92;
+                        end
+                        if(SETTINGS.stim_voltage_V >= max_voltage)
+                            break
+                        end
+                        if(SETTINGS.stim_voltage_V <= 1e-6)
+                            break
+                        end
+                        
+                        sig = StimGuiProcedures.getData(TDT, SETTINGS,1, ax1, ax2);
+                        db_got=20.*log10(sqrt(mean(sig.^2))/(20e-6));
+                        
+                    end
+                    Levels(db_array(j),2)=SETTINGS.stim_voltage_V;
+            end     
+            
+            
             SETTINGS.stimulus_length_ms = 100;
             SETTINGS.acquire_length_ms = 100;
             SETTINGS.stimulus_start_ms = 0;
             SETTINGS.stimulus_stop_ms = 100;
             
-            SETTINGS.stim_type =1; 
-            global RUNNING
-            RUNNING=1;
             
-             %calibrate tones 
-                for i= 1:length(freq_array)
-                    SETTINGS.stim_voltage_V=0.1; 
-                    disp(['FREQ: ' num2str(freq_array(i))])
+            SETTINGS.stim_voltage_V=0.1;
+            SETTINGS.stim_type =2;
+            %calibrate noise 
+            for j = 1:length(db_array)
+                sig = StimGuiProcedures.getData(TDT, SETTINGS,1, ax1, ax2);
+                db_got=20.*log10(sqrt(mean(sig.^2))/(20e-6));
                     
-                    for j = 1:length(db_array)
+                    while(db_got <= db_array(j)*0.98 || db_got >= db_array(j)*1.02)
                         
-                        disp(['LEVEL: ' num2str(db_array(j))])
+                        if ~RUNNING
+                            break
+                        end
+                        
+                        if(db_got <= db_array(j))
+                            SETTINGS.stim_voltage_V =SETTINGS.stim_voltage_V*1.11;
+                            if(SETTINGS.stim_voltage_V>=max_voltage)
+                                SETTINGS.stim_voltage_V=max_voltage;
+                                break
+                            end
+                        end
+                        if(db_got >= db_array(j))
+                            SETTINGS.stim_voltage_V =SETTINGS.stim_voltage_V*0.92;
+                        end
+                        if(SETTINGS.stim_voltage_V >= max_voltage)
+                            break
+                        end
+                        if(SETTINGS.stim_voltage_V <= 1e-6)
+                            break
+                        end
                         
                         sig = StimGuiProcedures.getData(TDT, SETTINGS,1, ax1, ax2);
-                        db_got=20.*log10(sqrt(mean(sig.^2))/(20e-6));  
+                        db_got=20.*log10(sqrt(mean(sig.^2))/(20e-6));
                         
-                        while(db_got <= db_array(j)*0.98 || db_got >= db_array(j)*1.02)
-                            
-                            if ~RUNNING
-                                break
-                            end
-                            
-                            if(db_got <= db_array(j))
-                                SETTINGS.stim_voltage_V =SETTINGS.stim_voltage_V*1.11;
-                                if(SETTINGS.stim_voltage_V>=max_voltage)
-                                    SETTINGS.stim_voltage_V=max_voltage;
-                                    break
-                                end     
-                            end 
-                            if(db_got >= db_array(j))
-                                SETTINGS.stim_voltage_V =SETTINGS.stim_voltage_V*0.92;
-                            end 
-                            if(SETTINGS.stim_voltage_V >= max_voltage)
-                                break
-                            end
-                            if(SETTINGS.stim_voltage_V <= 1e-6)
-                                break
-                            end     
-
-                            
-                            sig = StimGuiProcedures.getData(TDT, SETTINGS,1, ax1, ax2);
-                            db_got=20.*log10(sqrt(mean(sig.^2))/(20e-6)); 
-   
-                        end 
-                        Levels(db_array(j),freq_array(i))=SETTINGS.stim_voltage_V;
                     end
+                    Levels(db_array(j),1)=SETTINGS.stim_voltage_V;
+            end 
+
+            
+            SETTINGS.stim_type =1;
+            
+            %calibrate tones
+            for i= 1:length(freq_array)
+                SETTINGS.stim_voltage_V=0.1;
+                disp(['FREQ: ' num2str(freq_array(i))])
+                
+                for j = 1:length(db_array)
+                    
+                    disp(['LEVEL: ' num2str(db_array(j))])
+                    
+                    sig = StimGuiProcedures.getData(TDT, SETTINGS,1, ax1, ax2);
+                    db_got=20.*log10(sqrt(mean(sig.^2))/(20e-6));
+                    
+                    while(db_got <= db_array(j)*0.98 || db_got >= db_array(j)*1.02)
+                        
+                        if ~RUNNING
+                            break
+                        end
+                        
+                        if(db_got <= db_array(j))
+                            SETTINGS.stim_voltage_V =SETTINGS.stim_voltage_V*1.11;
+                            if(SETTINGS.stim_voltage_V>=max_voltage)
+                                SETTINGS.stim_voltage_V=max_voltage;
+                                break
+                            end
+                        end
+                        if(db_got >= db_array(j))
+                            SETTINGS.stim_voltage_V =SETTINGS.stim_voltage_V*0.92;
+                        end
+                        if(SETTINGS.stim_voltage_V >= max_voltage)
+                            break
+                        end
+                        if(SETTINGS.stim_voltage_V <= 1e-6)
+                            break
+                        end
+                        
+                        
+                        sig = StimGuiProcedures.getData(TDT, SETTINGS,1, ax1, ax2);
+                        db_got=20.*log10(sqrt(mean(sig.^2))/(20e-6));
+                        
+                    end
+                    Levels(db_array(j),freq_array(i))=SETTINGS.stim_voltage_V;
                 end
-                
-                
+            end
+            
+            
+            %interpolate click 
+            for i = 1:length(db_array)-1
+                num1=Levels(db_array(i),1);
+                num2=Levels(db_array(i+1),1);
+                step=(num2-num1)/(db_array(i+1)-db_array(i));
+                for k=1:(db_array(i+1)-db_array(i))
+                     Levels(db_array(i)+k,1)= num1+k*step;
+                end
+            end     
+            
+            %interpolate noise 
+            for i = 1:length(db_array)-1
+                num1=Levels(db_array(i),2);
+                num2=Levels(db_array(i+1),2);
+                step=(num2-num1)/(db_array(i+1)-db_array(i));
+                for k=1:(db_array(i+1)-db_array(i))
+                     Levels(db_array(i)+k,2)= num1+k*step;
+                end
+            end 
+               
             %interpolate freqs
             for i = 1:length(db_array)
                 for j =1:length(freq_array)-1
@@ -664,6 +874,7 @@ classdef StimGuiProcedures
                     end
                 end
             end
+
             %interpolate db levels for freqs 
             for i=freq_array(1):1:(freq_array(end))
                for j=1:length(db_array)-1
@@ -679,8 +890,7 @@ classdef StimGuiProcedures
                 
             [file, folder] = uiputfile('.mat');
             save([folder filesep file], 'Levels');
-             
-            
+
         end     
 
         function gain = computeGain(SETTINGS)
@@ -700,7 +910,9 @@ classdef StimGuiProcedures
                 case 2
                     gain = amp_gain; 
                 case 3
-                    gain = amp_gain;    
+                    gain = amp_gain; 
+                case 4   
+                     gain = amp_gain; 
             end         
 
         end     
@@ -791,17 +1003,17 @@ classdef StimGuiProcedures
                      TDT.setTag('wave_end', TDT.ms2Samples(SETTINGS.stimulus_start_ms) + 4 );  
 
                  otherwise
-                     
                      error('wtf error')
-                     
              end  
              
              switch SETTINGS.laser_on
                  
                  case 1
+                     
                      TDT.setTag('laser_on', 1);  
                      TDT.setTag('laser_start', TDT.ms2Samples(SETTINGS.laser_delay_ms));  
                      TDT.setTag('laser_end', TDT.ms2Samples(SETTINGS.laser_delay_ms) + TDT.ms2Samples(SETTINGS.laser_on_time_ms)); 
+                 
                  case 0 
                       TDT.setTag('laser_on', 0);   
                      

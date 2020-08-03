@@ -23,8 +23,7 @@ StimGuiProcedures.m: This class contains a bunch of static methods for getting d
 but they don't have to be. Additional methods/procedures can be added by users as needed. 
 
 StimGuiUserSettings.m: This class just holds fields for user settings. These settings are loaded by StimGui and usually passed
-to a procedure in StimGuiProcedures.m. StimGui loads all saved user settings files in the UserSettings folder. So, if you would like to 
-add or remove a settings file, that folder is the place to do it. 
+to a procedure in StimGuiProcedures.m. StimGui loads all saved user settings files in the UserSettings folder. So, if you would like to add or remove a settings file, that folder is the place to do it. 
 
 TDTDrivers.m: This class contains wrappers for interacting with an active .rcx circuit, running on the TDT box. 
 The methods contained in this class can be used to put together a procedure, like the ones found in StimGuiProcedures. 
