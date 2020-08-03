@@ -23,11 +23,18 @@ classdef StimGui < handle
     methods
         
         %setup
-        function obj = StimGui
+        function obj = StimGui(filepath)
             
-            %hard coded... use this circuit
-            obj.circuitpath = 'C:\Users\GoldingLab\Documents\MATLAB\StimGui2019\rcxCircuit.rcx';
+            if nargin <1
+                filepath = []; 
+            end     
             
+            if isempty(filepath)
+                obj.circuitpath = 'C:\Users\GoldingLab\Documents\MATLAB\StimGui2019\rcxCircuit.rcx';
+            else
+                obj.circuitpath=filepath; 
+            end     
+
             %set up circuit
             obj.TDT = TDTDrivers(obj.circuitpath);
             
@@ -94,6 +101,7 @@ classdef StimGui < handle
             obj.controls.tuningCurveTab = uitab(obj.controls.procsTabs,'Title','Tuning_Curve');
             obj.controls.monauralTab = uitab(obj.controls.procsTabs,'Title','Monaural/Diotic');
             obj.controls.itdTab = uitab(obj.controls.procsTabs,'Title','ITD_ILD');
+            obj.controls.lazerTab = uitab(obj.controls.procsTabs,'Title','Laser_Train');
             obj.controls.utilsTab = uitab(obj.controls.procsTabs,'Title','Utility_Functions');
             
             
@@ -138,6 +146,8 @@ classdef StimGui < handle
             obj.setupMonauralMenu;
             obj.setupItdIldMenu;
             obj.setupUtilFns;
+            obj.setupLaserTab; 
+            
 
             %run button%_______________________________________________%%%%%%%%%%%%%%%%%%%%%%%%
             uicontrol('Parent', obj.fig,'style','push',...
@@ -218,6 +228,7 @@ classdef StimGui < handle
                     averges = str2num(obj.controls.tuningAverages.String);
                     alternate_laser = obj.controls.tuningLaserAlternate.Value;
                     shuffle = obj.controls.tuningShuffle.Value;
+                    startWithZeros = obj.controls.startWithZeros.Value;
                     
                     splits = strsplit(freqs,':');
                     centerFreq = str2num(splits{1});
@@ -233,13 +244,11 @@ classdef StimGui < handle
                     args.averges = averges;
                     args.alternate_laser = alternate_laser;
                     args.shuffle = shuffle;
-                    
+                    args.startWithZeros = startWithZeros; 
                     
                     obj.tempData = StimGuiProcedures.tuningProcedure(obj.TDT, SETTINGS, args, ...
                         obj.calibration, obj.axes1, obj.axes2);
 
-                    
-                    
                 case 'ITD_ILD'
                     
                     if obj.controls.itdMode.Value
@@ -274,6 +283,14 @@ classdef StimGui < handle
                 case 'Utility_Functions'
                     
                     
+                    
+                case 'Laser_Train'    
+                    
+                    args.laser_on = str2num(obj.controls.laserProcOnTime.String);
+                    args.laser_off = str2num(obj.controls.laserProcOffTime.String);
+                    args.laser_reps = str2num(obj.controls.laserProcReps.String);
+                    obj.tempData = StimGuiProcedures.laserStimTrain(obj.TDT,SETTINGS, args, obj.axes1, obj.axes2);
+                    
                 otherwise 
                     error('wtf error')
                     
@@ -290,14 +307,22 @@ classdef StimGui < handle
                 
                 timestamp = regexprep(datestr(now),'[-: ]','_');
                 tag = SETTINGS.save_tag;
+                
+                root_dir = obj.controls.root_dir.String; 
+                if ~exist(root_dir, 'dir')
+                    mkdir(root_dir)
+                end     
+
                 try
-                    save(['DATA_' tag timestamp], 'DATA');
+                    save([root_dir filesep 'DATA_' tag timestamp], 'DATA');
                 catch 
                     disp('Tag is invalid for file name, removing... ')
-                    save(['DATA_' timestamp], 'DATA');
+                    save([root_dir filesep 'DATA_' timestamp], 'DATA');
                 end     
-            end     
-
+            end    
+            
+            %send to workspace
+            assignin('base','DATA', DATA);
             obj.infoBox.String = 'done.';
 
         end 
@@ -346,7 +371,6 @@ classdef StimGui < handle
                 
                 %turn our btn on
                 set(h,'value',value);
-                
             end
         end
         
@@ -408,15 +432,26 @@ classdef StimGui < handle
             SETTINGS.channel_out = []; 
             
             radioBtnFields ={'laser_on','am_modulation', 'fm_modulation','auto_save','display_output', 'display_input', 'raster', 'auto_scale'};
-            stringFields = {'save_tag','root_dir','ylims1','ylims2','gain_units'};
+            stringFields = {'save_tag','root_dir','ylims1','ylims2'};
+            pulldownFields = {'gain_units'};
             
             for ii=1:length(fields)
+                
                 if ismember(fields{ii},radioBtnFields)
+                    
                     SETTINGS.(fields{ii}) = obj.controls.(fields{ii}).Value;
                     
                 elseif ismember(fields{ii},stringFields)
                     
                     SETTINGS.(fields{ii}) = obj.controls.(fields{ii}).String;
+                    
+                elseif ismember(fields{ii},pulldownFields)      % causing problems, think it tries to pull a Val but should pull string? comment out for now...
+                       
+                    %val =obj.controls.(fields{ii}).Value;  
+                    %SETTINGS.(fields{ii}) = obj.controls.(fields{ii}).String{val};
+                    SETTINGS.(fields{ii}) = 'linear';   % quick & dirty fix. if 'gain_units' need to be in dB later...
+                        %address by commenting out line above, uncommenting
+                        %the 2 lines above it, and troubleshooting
                     
                 else
                     if ~strcmpi((fields{ii}), 'stim_voltage_V_B')
@@ -425,6 +460,7 @@ classdef StimGui < handle
                 end
                 
             end
+            
             
             
             %get appropriate voltage
@@ -451,8 +487,7 @@ classdef StimGui < handle
             end     
 
             obj.controls.stim_voltage_V.Value = volts; 
-
- 
+            
         end     
 
         
@@ -479,7 +514,7 @@ classdef StimGui < handle
                         
                         uicontrol('Parent', obj.controls.stimSettingsMenu, 'Style', 'text', 'String', fields{ii}, ...
                             'HorizontalAlignment', 'left', 'Position', [10 650-count*25 120 20]) ;
-                        jModel = javax.swing.SpinnerNumberModel(SETTINGS.(fields{ii}),-100000,100000,0.1);
+                        jModel = javax.swing.SpinnerNumberModel(SETTINGS.(fields{ii}),-100000,100000,1);
                         jSpinner = javax.swing.JSpinner(jModel);
                         
                         obj.controls.(fields{ii}) = javacomponent(jSpinner, [130 650-count*25 100 20], obj.controls.stimSettingsMenu);
@@ -510,11 +545,11 @@ classdef StimGui < handle
             
             acqFields = {'hpf_in_hz','lpf_in_hz','notch_in_hz','hpf_out_hz','lpf_out_hz','raster','raster_V',...
                 'display_output','display_input','amp_gain','micResponse_mVperPa','max_voltage_V','save_tag','root_dir',...
-                'ylims1','ylims2','auto_save','gain_units', 'auto_scale'};
+                'ylims1','ylims2','auto_save', 'auto_scale'};
             
             radioBtnFields ={'auto_save','display_output', 'display_input', 'raster', 'auto_scale'};
+            stringFields = {'save_tag','root_dir','ylims1','ylims2'};
             
-            stringFields = {'save_tag','root_dir','ylims1','ylims2','gain_units'};
             
             count=1;
             for ii=1:length(fields)
@@ -538,7 +573,7 @@ classdef StimGui < handle
                         
                         uicontrol('Parent', obj.controls.acqSettingsMenu, 'Style', 'text', 'String', fields{ii}, ...
                             'HorizontalAlignment', 'left', 'Position', [10 650-count*25 120 20]) ;
-                        jModel = javax.swing.SpinnerNumberModel(SETTINGS.(fields{ii}),-100000,100000,0.1);
+                        jModel = javax.swing.SpinnerNumberModel(SETTINGS.(fields{ii}),-100000,100000,1);
                         jSpinner = javax.swing.JSpinner(jModel);
                         
                         obj.controls.(fields{ii}) = javacomponent(jSpinner, [130 650-count*25 100 20], obj.controls.acqSettingsMenu);
@@ -549,11 +584,18 @@ classdef StimGui < handle
             end
             
             
+            uicontrol('Parent', obj.controls.acqSettingsMenu, 'Style', 'text', 'String', 'Gain Units:', ...
+                'HorizontalAlignment', 'left', 'Position', [10 170 100 20]) ;
+            
+            obj.controls.gain_units = uicontrol('Parent', obj.controls.acqSettingsMenu, 'Style', 'popup', 'String', {'dB', 'linear'}, ...
+                'HorizontalAlignment', 'left', 'Position', [118 170 100 20]) ;
+            
+            
             uicontrol('Parent', obj.controls.acqSettingsMenu, 'Style', 'text', 'String', 'Channel In:', ...
                 'HorizontalAlignment', 'left', 'Position', [10 140 100 20]) ;
             
             
-            obj.controls.channel_in = uicontrol('Parent', obj.controls.acqSettingsMenu, 'Style', 'popup', 'String', {'In-A','In-B','Both'}, ...
+            obj.controls.channel_in = uicontrol('Parent', obj.controls.acqSettingsMenu, 'Style', 'popup', 'String', {'In-A','In-B','Both', 'Optical'}, ...
                 'HorizontalAlignment', 'left', 'Position', [118 140 100 20]) ;
             
             
@@ -669,7 +711,9 @@ classdef StimGui < handle
             obj.controls.tuningShuffle = uicontrol('Parent', obj.controls.tuningCurveTab, 'Style', 'radio', 'String', 'Shuffle?', ...
                 'HorizontalAlignment', 'left', 'Position', [500 50 100 20]) ;
             
-            
+            obj.controls.startWithZeros = uicontrol('Parent', obj.controls.tuningCurveTab, 'Style', 'radio', 'String', 'StartWithZeros?', ...
+                'HorizontalAlignment', 'left', 'Position', [500 30 100 20]) ;
+
         end     
         
         
@@ -683,6 +727,35 @@ classdef StimGui < handle
                 'HorizontalAlignment', 'center', 'Position', [118 30 100 20]) ;
             
         end     
+        
+        
+        function setupLaserTab(obj)
+            
+            uicontrol('Parent', obj.controls.lazerTab, 'Style', 'text', 'String', 'ontime(ms):', ...
+                'HorizontalAlignment', 'left', 'Position', [10 50 100 20]) ;
+            
+            obj.controls.laserProcOnTime = uicontrol('Parent', obj.controls.lazerTab, 'Style', 'edit', 'String',...
+                '20', ...
+                'HorizontalAlignment', 'center', 'Position', [118 50 100 20]) ;
+            
+            uicontrol('Parent', obj.controls.lazerTab, 'Style', 'text', 'String', 'offtime(ms):', ...
+                'HorizontalAlignment', 'left', 'Position', [10 30 100 20]) ;
+            
+            obj.controls.laserProcOffTime = uicontrol('Parent', obj.controls.lazerTab, 'Style', 'edit', 'String',...
+                '20', ...
+                'HorizontalAlignment', 'center', 'Position', [118 30 100 20]) ;
+            
+            
+            uicontrol('Parent', obj.controls.lazerTab, 'Style', 'text', 'String', 'reps:', ...
+                'HorizontalAlignment', 'left', 'Position', [10 10 100 20]) ;
+            
+            obj.controls.laserProcReps = uicontrol('Parent', obj.controls.lazerTab, 'Style', 'edit', 'String',...
+                '50', ...
+                'HorizontalAlignment', 'center', 'Position', [118 10 100 20]) ;
+
+        end     
+        
+        
         
 
         function setupItdIldMenu(obj)
@@ -720,15 +793,18 @@ classdef StimGui < handle
         end     
         
         
-        
         function setupUtilFns(obj)
             
             uicontrol('Parent', obj.controls.utilsTab, 'Style', 'push', 'String', 'SPL check', ...
-                'HorizontalAlignment', 'left', 'Position', [10 30 100 20], 'callback',...
+                'HorizontalAlignment', 'left', 'Position', [10 30 100 20],...
+                 'ToolTipString', 'DONT FORGET TO CHECK THE FILTERS AND GAIN',...
+                'callback',...
                 @(h,e)StimGuiProcedures.splCheck(obj.TDT, obj.gatherSettings)) ;
             
             uicontrol('Parent', obj.controls.utilsTab, 'Style', 'push', 'String', 'Make Calibration', ...
-                'HorizontalAlignment', 'left', 'Position', [10 60 100 20],'callback',...
+                'HorizontalAlignment', 'left', 'Position', [10 60 100 20],...
+                 'ToolTipString', 'DONT FORGET TO CHECK THE FILTERS AND GAIN',...
+                'callback',...
                 @(h,e)StimGuiProcedures.makeCalibration(obj.TDT, obj.gatherSettings, obj.axes1, obj.axes2)) ;
             
         end     
