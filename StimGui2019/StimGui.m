@@ -103,6 +103,7 @@ classdef StimGui < handle
             obj.controls.itdTab = uitab(obj.controls.procsTabs,'Title','ITD_ILD');
             obj.controls.lazerTab = uitab(obj.controls.procsTabs,'Title','Laser_Train');
             obj.controls.utilsTab = uitab(obj.controls.procsTabs,'Title','Utility_Functions');
+            obj.controls.binauralUnmaskingTab = uitab(obj.controls.procsTabs,'Title','Binaural_Unmasking');
             
             
             %settings tab Group
@@ -146,7 +147,8 @@ classdef StimGui < handle
             obj.setupMonauralMenu;
             obj.setupItdIldMenu;
             obj.setupUtilFns;
-            obj.setupLaserTab; 
+            obj.setupLaserTab;
+            obj.setupBinUnmaskMenu;
             
 
             %run button%_______________________________________________%%%%%%%%%%%%%%%%%%%%%%%%
@@ -290,6 +292,28 @@ classdef StimGui < handle
                     args.laser_off = str2num(obj.controls.laserProcOffTime.String);
                     args.laser_reps = str2num(obj.controls.laserProcReps.String);
                     obj.tempData = StimGuiProcedures.laserStimTrain(obj.TDT,SETTINGS, args, obj.axes1, obj.axes2);
+                    
+                case 'Binaural_Unmasking'
+
+                    SETTINGS = obj.gatherSettings; % like pressing the Update button
+                
+                    args = [];
+                    args.tone_dBs           = str2num(obj.controls.tone_dBs.String);
+                    args.averages           = str2num(obj.controls.binUnmaskAverages.String);
+                    args.NoSo               = obj.controls.NoSo.Value;
+                    args.NoSp               = obj.controls.NoSp.Value;
+                    args.NpSo               = obj.controls.NpSo.Value;
+                    args.NpSp               = obj.controls.NpSp.Value;
+                    args.interleave_noise   = obj.controls.interleaveNoise.Value;
+                    args.shuffleTone_dBs    = obj.controls.shuffleTone_dBs.Value;
+                    
+                    % IS THIS NEEDED?
+                    obj.tempData  = StimGuiProcedures.binauralUnmasking(obj.TDT, SETTINGS,...
+                        args,...
+                        obj.axes1,...
+                        obj.axes2);
+                    %obj.calibration, SETTINGS.stim_level_dB, SETTINGS.tone_frequency_hz
+                    % all times (acq time, stim time, etc...)
                     
                 otherwise 
                     error('wtf error')
@@ -809,6 +833,45 @@ classdef StimGui < handle
             
         end     
         
+        
+        function setupBinUnmaskMenu(obj)
+
+             uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'text', 'String', 'Tone dBs:', ...
+                'HorizontalAlignment', 'left', 'Position', [10 70 100 20]) ;
+            
+            obj.controls.tone_dBs = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'edit', 'String',...
+                '40:1:80', ...
+                'HorizontalAlignment', 'center', 'Position', [118 70 100 20]) ;            
+
+            uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'text', 'String', 'Averages:', ...
+                'HorizontalAlignment', 'left', 'Position', [10 40 100 20]) ;
+            
+            obj.controls.binUnmaskAverages = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'edit', 'String',...
+                '10', ...
+                'HorizontalAlignment', 'center', 'Position', [118 40 100 20]) ;
+            
+            % Radio buttons NoSo, NoSp, NpSo, NpSp
+            %NoSo
+            obj.controls.NoSo = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'radio', 'String', 'NoSo', ...
+                'HorizontalAlignment', 'left', 'Position', [300 70 100 20]);
+            %NoSpi
+            obj.controls.NoSp = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'radio', 'String', '<HTML>NoS&pi;</HTML>', ...
+                'HorizontalAlignment', 'left', 'Position', [300 50 100 20]) ;
+            %NpiSo
+            obj.controls.NpSo = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'radio', 'String', '<HTML>N&pi;So</HTML>', ...
+                'HorizontalAlignment', 'left', 'Position', [300 30 100 20]) ;
+            %NpiSpi
+            obj.controls.NpSp = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'radio', 'String', '<HTML>N&pi;S&pi;</HTML>', ...
+                'HorizontalAlignment', 'left', 'Position', [300 10 100 20]) ;
+            
+            %Interleave noise (e.g. No, NoSo, No, NoSo,... Jiang et al. 1997 did this)
+            obj.controls.interleaveNoise = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'checkbox', 'String', 'Interleave noise alone?', ...
+                'HorizontalAlignment', 'left', 'Position', [400 70 200 20]) ;
+            %Randomize tone dBs
+            obj.controls.shuffleTone_dBs = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'checkbox', 'String', 'Randomize tone dB?', ...
+                'HorizontalAlignment', 'left', 'Position', [400 50 200 20]) ;
+            
+        end
 
         
         function loadCalibrationFiles(obj)
