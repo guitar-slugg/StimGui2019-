@@ -299,6 +299,7 @@ classdef StimGui < handle
                 
                     args = [];
                     args.tone_dBs           = str2num(obj.controls.tone_dBs.String);
+                    args.noise_dB           = str2num(obj.controls.noise_dB.String);
                     args.averages           = str2num(obj.controls.binUnmaskAverages.String);
                     args.NoSo               = obj.controls.NoSo.Value;
                     args.NoSp               = obj.controls.NoSp.Value;
@@ -307,11 +308,13 @@ classdef StimGui < handle
                     args.interleave_noise   = obj.controls.interleaveNoise.Value;
                     args.shuffleTone_dBs    = obj.controls.shuffleTone_dBs.Value;
                     
-                    % IS THIS NEEDED?
                     obj.tempData  = StimGuiProcedures.binauralUnmasking(obj.TDT, SETTINGS,...
                         args,...
+                        obj.calibration,...
                         obj.axes1,...
                         obj.axes2);
+                    % Vars below ARE NEEDED, but should be in SETTINGS,
+                    % TODO: double check...
                     %obj.calibration, SETTINGS.stim_level_dB, SETTINGS.tone_frequency_hz
                     % all times (acq time, stim time, etc...)
                     
@@ -836,19 +839,26 @@ classdef StimGui < handle
         
         function setupBinUnmaskMenu(obj)
 
-             uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'text', 'String', 'Tone dBs:', ...
+            uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'text', 'String', 'Tone dBs:', ...
                 'HorizontalAlignment', 'left', 'Position', [10 70 100 20]) ;
             
             obj.controls.tone_dBs = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'edit', 'String',...
                 '40:1:80', ...
-                'HorizontalAlignment', 'center', 'Position', [118 70 100 20]) ;            
+                'HorizontalAlignment', 'center', 'Position', [118 70 100 20]);
+            
+            uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'text', 'String', 'Noise dB:', ...
+                'HorizontalAlignment', 'left', 'Position', [10 50 100 20]) ;
+            
+            obj.controls.noise_dB = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'edit', 'String',...
+                '50', ...
+                'HorizontalAlignment', 'center', 'Position', [118 50 100 20]);
 
             uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'text', 'String', 'Averages:', ...
-                'HorizontalAlignment', 'left', 'Position', [10 40 100 20]) ;
+                'HorizontalAlignment', 'left', 'Position', [10 30 100 20]) ;
             
             obj.controls.binUnmaskAverages = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'edit', 'String',...
                 '10', ...
-                'HorizontalAlignment', 'center', 'Position', [118 40 100 20]) ;
+                'HorizontalAlignment', 'center', 'Position', [118 30 100 20]) ;
             
             % Radio buttons NoSo, NoSp, NpSo, NpSp
             %NoSo
