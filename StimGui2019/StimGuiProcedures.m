@@ -933,10 +933,10 @@ classdef StimGuiProcedures
             TDT.setTag('freq', SETTINGS.tone_frequency_hz);  %volts
             TDT.setTag('rise_fall',SETTINGS.rise_fall_ms);  %rise fall 
 
-             TDT.setTag('inLFP', SETTINGS.lpf_in_hz);  %Hz
+             TDT.setTag('inLPF', SETTINGS.lpf_in_hz);  %Hz
              TDT.setTag('inHPF', SETTINGS.hpf_in_hz);  %Hz
             
-             TDT.setTag('outLFP', SETTINGS.lpf_out_hz);  %Hz
+             TDT.setTag('outLPF', SETTINGS.lpf_out_hz);  %Hz
              TDT.setTag('outHPF', SETTINGS.hpf_out_hz);  %Hz
              
              TDT.setTag('dF', SETTINGS.freq_shift_hz);
