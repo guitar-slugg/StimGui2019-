@@ -533,6 +533,7 @@ classdef StimGuiProcedures
             acq_samples=  TDT.ms2Samples(SETTINGS.acquire_length_ms);
             TDT.setTag('amplitude', SETTINGS.stim_voltage_V);  %volts
             TDT.setTag('amp_B', SETTINGS.stim_voltage_V_B);  %volts
+            TDT.setTag('masking_noise_amp', SETTINGS.masking_noise_V); %volts, new .rcx circuit, errors?
             acq_offset = StimGuiProcedures.acqOffset;
             gain = StimGuiProcedures.computeGain(SETTINGS);
             
@@ -633,6 +634,7 @@ classdef StimGuiProcedures
             %off 
             TDT.setTag('amplitude', 0);  %volts
             TDT.setTag('amp_B', 0);  %volts
+            TDT.setTag('masking_noise_amp', 0); %volts, new .rcx circuit, errors?
             
             %average
             if avgFlag

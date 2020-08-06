@@ -49,6 +49,7 @@ classdef StimGuiUserSettings < handle
             root_dir
             auto_save
             stim_voltage_V_B
+            masking_noise_V
     end
     
     methods
@@ -102,6 +103,7 @@ classdef StimGuiUserSettings < handle
             obj.save_tag =[];
             obj.auto_save =true; 
             obj.stim_voltage_V_B =0 ;
+            obj.masking_noise_V = 0;
         end     
 
 
