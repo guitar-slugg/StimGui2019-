@@ -461,6 +461,7 @@ classdef StimGui < handle
             radioBtnFields ={'laser_on','am_modulation', 'fm_modulation','auto_save','display_output', 'display_input', 'raster', 'auto_scale'};
             stringFields = {'save_tag','root_dir','ylims1','ylims2'};
             pulldownFields = {'gain_units'};
+            hiddenFields = {'masking_noise_V'};
             
             for ii=1:length(fields)
                 
@@ -479,6 +480,10 @@ classdef StimGui < handle
                     SETTINGS.(fields{ii}) = 'linear';   % quick & dirty fix. if 'gain_units' need to be in dB later...
                         %address by commenting out line above, uncommenting
                         %the 2 lines above it, and troubleshooting
+                        
+                elseif ismember(fields{ii},hiddenFields)
+                    
+                    SETTINGS.(fields{ii}) = obj.controls.(fields{ii}).Value;
                     
                 else
                     if ~strcmpi((fields{ii}), 'stim_voltage_V_B')
