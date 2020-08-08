@@ -656,26 +656,35 @@ classdef StimGuiProcedures
             case 1 %NoSo
                 TDT.setTag('noise_sign_A',1); %A is right ear, contralat to Left IC
                 TDT.setTag('noise_sign_B',1); % 1 (in phase) or -1 (antiphase)
-                TDT.setTag('phase_A',0); % phase shift in degrees
-                TDT.setTag('phase_B',0);
+                %TDT.setTag('phase_A',0); % phase shift in degrees; deprecated for 180 degrees, sets to 0 in RPvdsEX, see its manual
+                %TDT.setTag('phase_B',0); % use phase and add in tag if you
+                    %want to include intermediate values down the line
+                TDT.setTag('tone_sign_A',1);
+                TDT.setTag('tone_sign_B',1);
             
             case 2 %NoSp
                 TDT.setTag('noise_sign_A',1);
                 TDT.setTag('noise_sign_B',1);
-                TDT.setTag('phase_A',180); % phase shift in degrees
-                TDT.setTag('phase_B',0);
+                %TDT.setTag('phase_A',180); % phase shift in degrees
+                %TDT.setTag('phase_B',0);
+                TDT.setTag('tone_sign_A',1);
+                TDT.setTag('tone_sign_B',-1);
             
             case 3 %NpSo
                 TDT.setTag('noise_sign_A',-1); % contralat (right) speaker is antiphase
                 TDT.setTag('noise_sign_B',1);
-                TDT.setTag('phase_A',0); % phase shift in degrees
-                TDT.setTag('phase_B',0);
+                %TDT.setTag('phase_A',0); % phase shift in degrees
+                %TDT.setTag('phase_B',0);
+                TDT.setTag('tone_sign_A',1);
+                TDT.setTag('tone_sign_B',1);
             
             case 4 %NpSp
                 TDT.setTag('noise_sign_A',-1); % contralat (right) speaker is antiphase
                 TDT.setTag('noise_sign_B',1);
-                TDT.setTag('phase_A',180); % phase shift in degrees
-                TDT.setTag('phase_B',0);
+                %TDT.setTag('phase_A',180); % phase shift in degrees
+                %TDT.setTag('phase_B',0);
+                TDT.setTag('tone_sign_A',1);
+                TDT.setTag('tone_sign_B',-1);
         
         end
                 % interaural relation 1,2,3,4
