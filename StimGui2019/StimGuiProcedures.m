@@ -537,38 +537,19 @@ classdef StimGuiProcedures
             % interleave noise?           1 | 0
             %}
     
-% ----TEMPLATE----
-    % / Output stim & input data vector setup
-    % / Edit relevant SETTINGS
-        % / NoSo mode
-        % / both speakers: StimGuiProcedures.stim_type & .channel_out
-        % / phase (handled in interaural_mode switch/case)
-        % / masking_noise_on, tone_on (handled in SETTINGS.stim_type switching)
-        % / freq, intensity/Voltage of tone
-    % / noise amplitude SETTINGS? setTag('masking_noise_amplitude') cal..
-    % / filter parameters - reminder in GUI
-    % *random seed/frozen noise - .rcx circuit test
-    % / calibration
-    % RCX CIRCUIT NEEDS:
-        % / amplitude (A), amp_B (B) tones; here stim_voltage_A, StimGuiProcedures.getData()
-        % / freq (AB same)
-        % / phase_A, phase_B
-        % / tone_on (A & B?) sig_A & B on for channel_out = 3
-        % / trigger (Src=Soft1)
-        % / noise_on (0), pulse_on (0)
-        % / amp_B, phase_B
-        % / masking_noise_amp, masking_noise_on, noise_sign_A & B
-        % UNCERTAIN: scale_sig_A & B?
-% / Randomize tone dBs, preserve original
-% / Interleave noise (if interleave_noise == 1)
-% / RUNNING=1 & for loop, getData()
-% Unshuffle randomized tone runs (& pair with interleaved noise preceding)
-        % noise should be chosen No or Npi for 1 run
-% Pack into DATA.__ structure
-% Save (handled by auto_save)
+          % ----TODO----
+            % *random seed/frozen noise - .rcx circuit test
+            % Are scale_sig_A & B used anywhere?
+            % / getDat()
+            % / Unshuffle randomized tone runs (& pair with interleaved noise preceding)
+            % noise should be chosen No or Npi for 1 run
+            % / getDat() 3 lines (that make dat & inSig)
+            % / Pack into DATA.__ structure
+            % Save (handled by auto_save?)
+            % ***CALIBRATE!!
     
 
-    % Set any SETTINGS directly here
+          % Set any SETTINGS directly here
             tone_dBs        = args.tone_dBs';
             noise_dB        = args.noise_dB;
             averages        = args.averages;
@@ -598,10 +579,10 @@ classdef StimGuiProcedures
             %}
             SETTINGS.channel_out = 3; %both speaker channels (i think)
             SETTINGS.stim_type = 4; %tone+noise on
-            %TODO: verify that tone & noise aren't on different circuit delays
+
             
             
-     % Constant noise level
+          % Constant noise level
             %No noise baseline, 7-15dB above No threshold, set in Binaural_Unmasking tab
             noise_V = calibration(round(noise_dB),round(2)); % noise is column 2 in cal  CHECK DURING STIM!
                 % ^ calibrate with filters, 3rd column? or filter
@@ -610,14 +591,14 @@ classdef StimGuiProcedures
             SETTINGS.masking_noise_V = noise_V; % setTag() is in StimGuiProcedures.getData()
 
             
-    % Randomize tone dB & Interleave noise if selected
+          % Randomize tone dB & Interleave noise if selected
             if shuffleTone_dBs == 1;
 
                  tone_dBs = zeros(length(tone_dBs),averages);
                  for i_avgs = 1:averages;
                      tone_dBs(:,i_avgs) = tone_dBs_orig(randperm(length(tone_dBs_orig)));
                  end
-                 %include indices for unshuffling? check tuning procedure
+
             else
                 tone_dBs = repmat(tone_dBs,1,averages);
             end
@@ -647,116 +628,183 @@ classdef StimGuiProcedures
             end
             %}
             
-            
+            % Check, should be same size REMOVE LATER
+            [size(tone_dBs_orig,1)*(1+interleaveNoise) averages]
+            size(tone_dBs)
 
-    % Interaural Mode (interaural phase of sitmuli)
-    %       see .rcx file for circuit and its tags
-        switch find(interaural_mode)
-% TODO: is it incorrect to setTag() here? maybe better to set in getData?
-            case 1 %NoSo
-                TDT.setTag('noise_sign_A',1); %A is right ear, contralat to Left IC
-                TDT.setTag('noise_sign_B',1); % 1 (in phase) or -1 (antiphase)
-                %TDT.setTag('phase_A',0); % phase shift in degrees; deprecated for 180 degrees, sets to 0 in RPvdsEX, see its manual
-                %TDT.setTag('phase_B',0); % use phase and add in tag if you
-                    %want to include intermediate values down the line
-                TDT.setTag('tone_sign_A',1);
-                TDT.setTag('tone_sign_B',1);
+            tone_dBs
+            % ^^ REMOVE LATER
             
-            case 2 %NoSp
-                TDT.setTag('noise_sign_A',1);
-                TDT.setTag('noise_sign_B',1);
-                %TDT.setTag('phase_A',180); % phase shift in degrees
-                %TDT.setTag('phase_B',0);
-                TDT.setTag('tone_sign_A',1);
-                TDT.setTag('tone_sign_B',-1);
             
-            case 3 %NpSo
-                TDT.setTag('noise_sign_A',-1); % contralat (right) speaker is antiphase
-                TDT.setTag('noise_sign_B',1);
-                %TDT.setTag('phase_A',0); % phase shift in degrees
-                %TDT.setTag('phase_B',0);
-                TDT.setTag('tone_sign_A',1);
-                TDT.setTag('tone_sign_B',1);
             
-            case 4 %NpSp
-                TDT.setTag('noise_sign_A',-1); % contralat (right) speaker is antiphase
-                TDT.setTag('noise_sign_B',1);
-                %TDT.setTag('phase_A',180); % phase shift in degrees
-                %TDT.setTag('phase_B',0);
-                TDT.setTag('tone_sign_A',1);
-                TDT.setTag('tone_sign_B',-1);
+          % Interaural Mode (interaural phase of sitmuli)
+          %       see .rcx file for circuit and its tags
+            switch find(interaural_mode)
+                case 1 %NoSo
+                    TDT.setTag('noise_sign_A',1); %A is right ear, contralat to Left IC
+                    TDT.setTag('noise_sign_B',1); % 1 (in phase) or -1 (antiphase)
+                    %TDT.setTag('phase_A',0); % phase shift in degrees; deprecated for 180 degrees, sets to 0 in RPvdsEX, see its manual
+                    %TDT.setTag('phase_B',0); % use phase and add in tag if you
+                        %want to include intermediate values down the line
+                    TDT.setTag('tone_sign_A',1);
+                    TDT.setTag('tone_sign_B',1);
+            
+                case 2 %NoSp
+                    TDT.setTag('noise_sign_A',1);
+                    TDT.setTag('noise_sign_B',1);
+                    %TDT.setTag('phase_A',180); % phase shift in degrees
+                    %TDT.setTag('phase_B',0);
+                    TDT.setTag('tone_sign_A',1);
+                    TDT.setTag('tone_sign_B',-1);
+            
+                case 3 %NpSo
+                    TDT.setTag('noise_sign_A',-1); % contralat (right) speaker is antiphase
+                    TDT.setTag('noise_sign_B',1);
+                    %TDT.setTag('phase_A',0); % phase shift in degrees
+                    %TDT.setTag('phase_B',0);
+                    TDT.setTag('tone_sign_A',1);
+                    TDT.setTag('tone_sign_B',1);
+            
+                case 4 %NpSp
+                    TDT.setTag('noise_sign_A',-1); % contralat (right) speaker is antiphase
+                    TDT.setTag('noise_sign_B',1);
+                    %TDT.setTag('phase_A',180); % phase shift in degrees
+                    %TDT.setTag('phase_B',0);
+                    TDT.setTag('tone_sign_A',1);
+                    TDT.setTag('tone_sign_B',-1);
         
-        end
-                % interaural relation 1,2,3,4
-                %                N diff   S phase diff
-                %   1   No  So     1              0
-                %   2   No  Spi    1            180
-                %   3   Npi So    -1              0
-                %   4   Npi Spi   -1            180
+            end
+                    % interaural relation 1,2,3,4
+                    %                N diff   S phase diff
+                    %   1   No  So     1              0
+                    %   2   No  Spi    1            180
+                    %   3   Npi So    -1              0
+                    %   4   Npi Spi   -1            180
             
             
-	global RUNNING  % ABOVE OR BELOW ALL THIS???
-    RUNNING = 1;
+            global RUNNING  % ABOVE OR BELOW ALL THIS???
+            RUNNING = 1;
         
-    acq_samples = TDT.ms2Samples(SETTINGS.acquire_length_ms);
-    % data & input have twice as many rows if noise is interleaved
-    data  = zeros(length(tone_dBs)*(interleaveNoise + 1),averages,acq_samples);
-    % TODO: ^ check size correct, better to use zeros(size()
-    input = zeros(length(tone_dBs)*(interleaveNoise + 1),averages,acq_samples);
+            acq_samples = TDT.ms2Samples(SETTINGS.acquire_length_ms);
+            
+            data  = zeros(length(tone_dBs)*(interleaveNoise + 1),averages,acq_samples);
+            input = zeros(length(tone_dBs)*(interleaveNoise + 1),averages,acq_samples);
+            % TODO: ^NEXT check size correct, better to use zeros(size(tone_dBs)
+            % data & input have twice as many rows if noise is interleaved
         
 
-    % Do for BOTH CHANNELS A & B!
-        for i_avg = 1:averages;
+            % Do for BOTH CHANNELS A & B!
+            for i_avg = 1:averages;
             
-            for i_tone_dBs = 1:length(tone_dBs(:,1));
-            % tone_dBs is MATRIX of random dBs (down) by averages (across)
+                for i_tone_dBs = 1:length(tone_dBs(:,1));
+                % tone_dBs is MATRIX of random dBs (down) by averages (across)
            
-                % run stimuli
-                volts = calibration(round(tone_dBs(i_tone_dBs,i_avg)),round(freq));                    
+                    % run stimuli
+                    volts = calibration(round(tone_dBs(i_tone_dBs,i_avg)),round(freq));                    
                     
-                SETTINGS.stim_voltage_V = volts;
-                    % ^ setTag('amplitude') tone_A
-                SETTINGS.stim_voltage_V_B = volts;
-                    % ^ setTag('amp_B')     tone_B
-                    % 'volts' is the calibrated amplitude (a constant, not
-                    % a time-varying signal)
-                SETTINGS.masking_noise_V = calibration(noise_dB,2);
-                    % TODO: check that this writes to settings here, for
-                    % setTag!
+                    SETTINGS.stim_voltage_V = volts;
+                        % ^ setTag('amplitude') tone_A
+                    SETTINGS.stim_voltage_V_B = volts;
+                        % ^ setTag('amp_B')     tone_B
+                        % 'volts' is the calibrated amplitude (a constant, not
+                        % a time-varying signal)
+                    SETTINGS.masking_noise_V = calibration(noise_dB,2);
+                        % TODO: check that this writes to settings here, for
+                        % setTag!
             
-                % TODO: ADJUST FOR Binaural Unmasking 
-                [dat, inSig] = StimGuiProcedures.getData(TDT,SETTINGS,1,ax1,ax2);
-                data(i_tone_dBs,i_avg, : ) = dat;
-                inputs(i_tone_dBs,i_avg, : ) = inSig(1,:);
+                    % TODO: ADJUST FOR Binaural Unmasking 
+                    [dat, inSig] = StimGuiProcedures.getData(TDT,SETTINGS,1,ax1,ax2);
+                    data(i_tone_dBs,i_avg, : ) = dat;
+                    inputs(i_tone_dBs,i_avg, : ) = inSig(1,:);
         
+                    if ~RUNNING
+                        break
+                    end
+            
+                end
+            
                 if ~RUNNING
                     break
                 end
             
             end
             
-            if ~RUNNING
-                break
-            end
-            
-        end
-            
 
-        
-    % ... unshuffle tone_dBs...(get from tuning)
+          % Unshuffle tone_dBs (adapted from tuning shuffle procedure)
+            if shuffleTone_dBs == 1
+                
+                % Data & inputs should match tone_dBs size in first 2 dimensions
+                if size(data(:,:,1)) ~= tone_dBs
+                    error('Data does not match tone_dBs size')
+                end
+                if size(inputs(:,:,1)) ~= tone_dBs
+                    error('Signal does not match tone_dBs size')
+                end
+                
+             %1. Find indexes to un-shuffle 
+                tone_dBs_idx = zeros(length(tone_dBs_orig),averages);
+                for i = 1:length(tone_dBs(1,:));
+                    [~,tone_dBs_idx(:,i)] = ismember(tone_dBs_orig,tone_dBs(:,i));
+                    % ^ gives index (in tone_dBs) of ordered dBs
+                    %   NOT order in line of tone_dBs
+                    % below is example PLUS noise interleaved (thus even indices), noise indexes not shown
+                    % orig   tone_dBs  tone_dBs_idx
+                    % 40        40          2
+                    % 50        80         10
+                    % 60        60          6
+                    % 70        70          8
+                    % 80        50          4
+                end
+
+                if interleaveNoise == 1;
+                    noise_dBs_idx = tone_dBs_idx - 1; % noise precedes each tone
+                    all_idx = reshape( [noise_dBs_idx(:) tone_dBs_idx(:)]',2*size(tone_dBs_idx,1), []);
+                    %recombine noise and tone idx in proper order
+                else all_idx = tone_dBs_idx;
+                end
+                    
+             %2. Find what idx of shuffled data we need, in order
+                for i_avg = 1:averages;
+                    for i_dB = 1:length(tone_dBs(:,1));
+                        idx_dB_shuff = all_idx(i_dB,i_avg);
+                        
+             %3. Sort (unshuffle)
+                        unshuffled_data(i_dB,i_avg,:)  = data(idx_dB_shuff,i_avg,:);
+                        unshuffled_inputs(i_dB,i_avg,:) = inputs(idx_dB_shuff,i_avg,:);
+                    end
+                end
+                
+            end
     
     
-            
-    % Output to save
-            DATA.data            = data;
-            DATA.input_signals   = input;
-            DATA.tone_dBs        = tone_dBs;
-            %DATA.args           = args; ???
-            DATA.interaural_mode = interaural_mode_label{find(interaural_mode)};
-            %DATA.noise_level    = 
-            %DATA.noise_V        =
-            %DATA.noise_wav      =  % A & B
-            %DATA.noise_sig_wav  =  % A & B
+          % Output to save
+            %TODO: have it save original shuffled data & inputs as a backup!
+            % NEXT
+            DATA.args = args; % tone_dBs, noise_dB, averages,NoSo..,interleaveNoise,shuffleTone_dBs                   
+            DATA.interaural.mode    = interaural_mode;
+            DATA.interaural.label   = interaural_mode_label;
+            DATA.interaural_mode    = interaural_mode_label{find(interaural_mode)};
+            DATA.noise_V            = noise_V;
+
+            % tone_dBs_orig,
+            % data_orig, inputs_orig, if exist [data_unshuffled, inputs_unshuffled]
+            % .indexes. (tone_dBs_idx, noise_dBs_idx, all_idx)
+
+            %if exist for any?
+            DATA.shuffled.tone_dBs = tone_dBs;
+            DATA.shuffled.data = data;  % make sure these aren't altered anywhere
+            DATA.shuffled.inputs = inputs;% make sure these aren't altered anywhere
+            %confusing relationship between what data is
+            % data and inputs are unshuffled if shuffle ==0, shuffled if it == 1
+                % make *_orig versions & *_unshuff versions of data & inputs
+
+            DATA.tone_dBs = tone_dBs_orig;
+            DATA.data = unshuffled_data;
+            DATA.inputs = unshuffled_inputs;
+
+            DATA.averages = averages;
+            DATA.shuffleTone_dBs = shuffleTone_dBs;
+            DATA.interleaveNoise = interleaveNoise;
             
             % No Laser Alt here                   1 | 0...???? NO just run separately
             %   - due to interleave option, ideal for control/minimizing adaptation
