@@ -30,7 +30,8 @@ classdef StimGui < handle
             end     
             
             if isempty(filepath)
-                obj.circuitpath = 'C:\Users\GoldingLab\Documents\MATLAB\StimGui2019\rcxCircuit.rcx';
+                %obj.circuitpath = 'C:\Users\GoldingLab\Documents\MATLAB\StimGui2019\rcxCircuit.rcx';
+                obj.circuitpath = 'C:\Users\GoldingLab\Documents\MATLAB\StimGui2019\rcxCircuit_TDT.rcx';
             else
                 obj.circuitpath=filepath; 
             end     
