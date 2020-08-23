@@ -545,7 +545,7 @@ classdef StimGuiProcedures
             % noise should be chosen No or Npi for 1 run
             % / getDat() 3 lines (that make dat & inSig)
             % / Pack into DATA.__ structure
-            % Save (handled by auto_save?)
+            % / Save (handled by auto_save?)
             % ***CALIBRATE!!
     
 
@@ -577,7 +577,7 @@ classdef StimGuiProcedures
             %SETTINGS.channel_in = [];
             % BE VERY CAREFUL HERE, SEE PROCEDURES (1-4 ALREADY ALLOCATED)
             %}
-            SETTINGS.channel_out = 3; %both speaker channels (i think)
+            SETTINGS.channel_out = 3; %both speaker channels
             SETTINGS.stim_type = 4; %tone+noise on
 
             
@@ -682,18 +682,16 @@ classdef StimGuiProcedures
                     %   4   Npi Spi   -1            180
             
             
-            global RUNNING  % ABOVE OR BELOW ALL THIS???
+            global RUNNING
             RUNNING = 1;
         
             acq_samples = TDT.ms2Samples(SETTINGS.acquire_length_ms);
             
-            data  = zeros(length(tone_dBs)*(interleaveNoise + 1),averages,acq_samples);
-            input = zeros(length(tone_dBs)*(interleaveNoise + 1),averages,acq_samples);
-            % TODO: ^NEXT check size correct, better to use zeros(size(tone_dBs)
-            % data & input have twice as many rows if noise is interleaved
+            data  = zeros(length(tone_dBs(:,1)),averages,acq_samples);
+            inputs_A = zeros(length(tone_dBs(:,1)),averages,acq_samples);            % binaural sig requires double the channels
+            inputs_B = zeros(length(tone_dBs(:,1)),averages,acq_samples);            % binaural sig requires double the channels
         
 
-            % Do for BOTH CHANNELS A & B!
             for i_avg = 1:averages;
             
                 for i_tone_dBs = 1:length(tone_dBs(:,1));
@@ -709,13 +707,11 @@ classdef StimGuiProcedures
                         % 'volts' is the calibrated amplitude (a constant, not
                         % a time-varying signal)
                     SETTINGS.masking_noise_V = calibration(noise_dB,2);
-                        % TODO: check that this writes to settings here, for
-                        % setTag!
             
-                    % TODO: ADJUST FOR Binaural Unmasking 
                     [dat, inSig] = StimGuiProcedures.getData(TDT,SETTINGS,1,ax1,ax2);
                     data(i_tone_dBs,i_avg, : ) = dat;
-                    inputs(i_tone_dBs,i_avg, : ) = inSig(1,:);
+                    inputs_A(i_tone_dBs,i_avg, : ) = inSig(1,:);
+                    inputs_B(i_tone_dBs,i_avg, : ) = inSig(2,:); % output 2nd audio channel (out_B, left ear)
         
                     if ~RUNNING
                         break
@@ -734,10 +730,13 @@ classdef StimGuiProcedures
             if shuffleTone_dBs == 1
                 
                 % Data & inputs should match tone_dBs size in first 2 dimensions
-                if size(data(:,:,1)) ~= tone_dBs
+                if size(data(:,:,1)) ~= size(tone_dBs)
                     error('Data does not match tone_dBs size')
                 end
-                if size(inputs(:,:,1)) ~= tone_dBs
+                if size(inputs_A) ~= size(inputs_B)
+                    error('Speaker signal data unmatched')
+                end
+                if size(inputs_A(:,:,1)) ~= size(tone_dBs)
                     error('Signal does not match tone_dBs size')
                 end
                 
@@ -756,7 +755,7 @@ classdef StimGuiProcedures
                     % 80        50          4
                 end
 
-                if interleaveNoise == 1;
+                if interleaveNoise == 1; % CURRENTLY NOT SET UP TO ADJUST INDEPENDENTLY, BUT OK FOR NOW, WILL ALWAYS CHECK BOTH ANYWAY...
                     noise_dBs_idx = tone_dBs_idx - 1; % noise precedes each tone
                     all_idx = reshape( [noise_dBs_idx(:) tone_dBs_idx(:)]',2*size(tone_dBs_idx,1), []);
                     %recombine noise and tone idx in proper order
@@ -770,41 +769,54 @@ classdef StimGuiProcedures
                         
              %3. Sort (unshuffle)
                         unshuffled_data(i_dB,i_avg,:)  = data(idx_dB_shuff,i_avg,:);
-                        unshuffled_inputs(i_dB,i_avg,:) = inputs(idx_dB_shuff,i_avg,:);
+                        unshuffled_inputs_A(i_dB,i_avg,:) = inputs_A(idx_dB_shuff,i_avg,:);
+                        unshuffled_inputs_B(i_dB,i_avg,:) = inputs_B(idx_dB_shuff,i_avg,:);
                     end
                 end
-                
             end
+            
     
     
           % Output to save
-            %TODO: have it save original shuffled data & inputs as a backup!
-            % NEXT
-            DATA.args = args; % tone_dBs, noise_dB, averages,NoSo..,interleaveNoise,shuffleTone_dBs                   
-            DATA.interaural.mode    = interaural_mode;
-            DATA.interaural.label   = interaural_mode_label;
-            DATA.interaural_mode    = interaural_mode_label{find(interaural_mode)};
-            DATA.noise_V            = noise_V;
+            %Save original shuffled data & inputs as a backup! change
+            %later, large file sizes...just insurange policy
+            DATA.tone_dBs               = tone_dBs_orig;
+            DATA.noise_dB               = noise_dB;
+            DATA.freq                   = freq;
+            DATA.averages               = averages;
+            DATA.interaural_mode        = interaural_mode;
+            DATA.interaural_mode_label  = interaural_mode_label;
+            DATA.interleaveNoise        = interleaveNoise;
+            DATA.shuffleTone_dBs        = shuffleTone_dBs;
+            DATA.data_orig              = data;
+            DATA.inputs_A               = inputs_A;
+            DATA.inputs_B               = inputs_B; %refine later
+            
+            if shuffleTone_dBs == 1
+                DATA.unshuffled_data      = unshuffled_data;
+                DATA.unshuffled_inputs_A  = unshuffled_inputs_A;
+                DATA.unshuffled_inputs_B  = unshuffled_inputs_B;
+                
+                %insurance in case unshuffle is screwy
+                DATA.indexes.tone_dBs_idx           = tone_dBs_idx;
+                DATA.indexes.all_idx                = all_idx;
+                if interleaveNoise
+                    DATA.indexes.noise_dBs_idx      = noise_dBs_idx;
+                end
+            end
+            
 
-            % tone_dBs_orig,
-            % data_orig, inputs_orig, if exist [data_unshuffled, inputs_unshuffled]
-            % .indexes. (tone_dBs_idx, noise_dBs_idx, all_idx)
-
+            %{
             %if exist for any?
             DATA.shuffled.tone_dBs = tone_dBs;
             DATA.shuffled.data = data;  % make sure these aren't altered anywhere
-            DATA.shuffled.inputs = inputs;% make sure these aren't altered anywhere
+            DATA.shuffled.inputs_A = inputs_A;% make sure these aren't altered anywhere
+            DATA.shuffled.inputs_B = inputs_B;% make sure these aren't altered anywhere
             %confusing relationship between what data is
             % data and inputs are unshuffled if shuffle ==0, shuffled if it == 1
                 % make *_orig versions & *_unshuff versions of data & inputs
 
-            DATA.tone_dBs = tone_dBs_orig;
-            DATA.data = unshuffled_data;
-            DATA.inputs = unshuffled_inputs;
-
-            DATA.averages = averages;
-            DATA.shuffleTone_dBs = shuffleTone_dBs;
-            DATA.interleaveNoise = interleaveNoise;
+            %}
             
             % No Laser Alt here                   1 | 0...???? NO just run separately
             %   - due to interleave option, ideal for control/minimizing adaptation
