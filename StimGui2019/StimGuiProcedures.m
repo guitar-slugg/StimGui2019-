@@ -585,6 +585,15 @@ classdef StimGuiProcedures
           % Constant noise level
             %No noise baseline, 7-15dB above No threshold, set in Binaural_Unmasking tab
             noise_V = calibration(round(noise_dB),round(2)); % noise is column 2 in cal  CHECK DURING STIM!
+                % !!!!! CALIBRATION ISSUE !!!!!
+                % column 2 is only Noise if created by Stim_gui.m (an old
+                % file)
+                %
+                % if the calibration file was created by StimGui, it's
+                % column 1, CLICK IS COLUMN 2...
+                %
+                %
+                %
                 % ^ calibrate with filters, 3rd column? or filter
                 % calibration...then would have to searchStim with .1-5kHz
                 % noise... might not be so bad. quick fix
@@ -1009,6 +1018,8 @@ classdef StimGuiProcedures
         
         
         function Levels = makeCalibration(TDT, SETTINGS, ax1, ax2)
+            
+            fprintf(2,'Warning: Calibration does not work properly. See https://github.com/guitar-slugg/StimGui2019- for known issues\n')
             
             info = inputdlg({'low freq:','high freq:','freq interval','low dB:','high dB','dB interval'}, 'Settings', ...
                 [1 30;1 30;1 30;1 30;1 30;1 30], {'500','20000','250','10','90','5'});
