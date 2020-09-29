@@ -837,6 +837,11 @@ classdef StimGuiProcedures
             %   noise+signal
             %   - this proceure DOES need to know laser status though. do i need to
             %   program that in here for it to run??
+            
+            TDT.setTag('noise_sign_A',1);
+            TDT.setTag('noise_sign_B',1);
+            TDT.setTag('tone_sign_A',1);
+            TDT.setTag('tone_sign_B',1);
     
         end
         
@@ -926,10 +931,35 @@ classdef StimGuiProcedures
                 end 
                 
                 
-                %plot 
+                % Plot 
                 if SETTINGS.display_output && SETTINGS.display_input
                     plot(ax1, time_vector, acquired_signal);
                     plot(ax2, time_vector, input_signal);
+                    
+                    % This block for Binaural Beats only, typically, to
+                    % check phase is correct after BinUnmask
+                    % But analysis code should control for the error this
+                    % is meant to detect anyway
+                    %{
+                    if ii == 1;
+                        Inset1 = figure; Inset1.Position = [1221 727 682 259];
+                    else
+                        Inset1; clf
+                    end
+                        Inset1; % Display audio signal zoomed at times..
+                        sp1 = subplot(1,2,1); hold on % 0 seconds, BBeat signal should be in phase
+                            title('0 sec')
+                            plot(time_vector(1:999),input_signal(1,1:999))
+                            plot(time_vector(1:999),input_signal(2,1:999))
+                                axis tight
+                        if length(time_vector) > 48349
+                        sp2 = subplot(1,2,2); hold on % 0.5 seconds, BBeat signal should be out of phase
+                            title('0.5 sec')
+                            plot(time_vector(48350:49348),input_signal(1,48350:49348)) % .5 second, for beat freq = 1 Hz
+                            plot(time_vector(48350:49348),input_signal(2,48350:49348))
+                                axis tight
+                        end
+                     %}
                 elseif SETTINGS.display_output 
                     plot(ax1, time_vector, acquired_signal);
                 elseif SETTINGS.display_input
