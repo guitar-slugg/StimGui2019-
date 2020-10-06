@@ -302,10 +302,12 @@ classdef StimGui < handle
                     args.tone_dBs           = str2num(obj.controls.tone_dBs.String);
                     args.noise_dB           = str2num(obj.controls.noise_dB.String);
                     args.averages           = str2num(obj.controls.binUnmaskAverages.String);
-                    args.NoSo               = obj.controls.NoSo.Value;
+                    args.NoSo               = obj.controls.NoSo.Value; %radio buttons (0 or 1)
                     args.NoSp               = obj.controls.NoSp.Value;
                     args.NpSo               = obj.controls.NpSo.Value;
                     args.NpSp               = obj.controls.NpSp.Value;
+                    args.NoSx               = obj.controls.NoSx.Value;
+                    args.NoSx_phase         = str2num(obj.controls.NoSx_phase.String);
                     args.interleave_noise   = obj.controls.interleaveNoise.Value;
                     args.shuffleTone_dBs    = obj.controls.shuffleTone_dBs.Value;
                     
@@ -874,16 +876,27 @@ classdef StimGui < handle
             % Radio buttons NoSo, NoSp, NpSo, NpSp
             %NoSo
             obj.controls.NoSo = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'radio', 'String', 'NoSo', ...
-                'HorizontalAlignment', 'left', 'Position', [300 70 100 20]);
+                'HorizontalAlignment', 'left', 'Position', [260 77 100 20]);
             %NoSpi
             obj.controls.NoSp = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'radio', 'String', '<HTML>NoS&pi;</HTML>', ...
-                'HorizontalAlignment', 'left', 'Position', [300 50 100 20]) ;
+                'HorizontalAlignment', 'left', 'Position', [260 60 100 20]) ;
             %NpiSo
             obj.controls.NpSo = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'radio', 'String', '<HTML>N&pi;So</HTML>', ...
-                'HorizontalAlignment', 'left', 'Position', [300 30 100 20]) ;
+                'HorizontalAlignment', 'left', 'Position', [260 43 100 20]) ;
             %NpiSpi
             obj.controls.NpSp = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'radio', 'String', '<HTML>N&pi;S&pi;</HTML>', ...
-                'HorizontalAlignment', 'left', 'Position', [300 10 100 20]) ;
+                'HorizontalAlignment', 'left', 'Position', [260 26 100 20]) ;
+            %NoSx custom intermediate pi value
+            obj.controls.NoSx = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'radio', 'String', 'NoS__ :', ...
+                'HorizontalAlignment', 'left', 'Position', [260 9 100 20]) ;
+            
+                % ^ Custom pi value text field (NoSx only)
+                obj.controls.NoSx_phase = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'edit', 'String',...
+                    'pi/2', ...
+                    'HorizontalAlignment', 'center', 'Position', [320 9 50 20]);
+                uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'text', 'String', '(radians: pi/3, pi/2, 2*pi/3, 5*pi/6, ...)', ...
+                    'HorizontalAlignment', 'left', 'Position', [371 5 200 20]) ;
+            
             
             %Interleave noise (e.g. No, NoSo, No, NoSo,... Jiang et al. 1997 did this)
             obj.controls.interleaveNoise = uicontrol('Parent', obj.controls.binauralUnmaskingTab, 'Style', 'checkbox', 'String', 'Interleave noise alone?', ...

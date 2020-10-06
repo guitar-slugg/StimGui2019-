@@ -557,14 +557,16 @@ classdef StimGuiProcedures
             NoSp            = args.NoSp;
             NpSo            = args.NpSo;
             NpSp            = args.NpSp;
+            NoSx            = args.NoSx;
+            NoSx_phase      = args.NoSx_phase;
             interleaveNoise = args.interleave_noise;
             shuffleTone_dBs = args.shuffleTone_dBs;
             
             tone_dBs_orig = tone_dBs;
             freq = SETTINGS.tone_frequency_hz;
             
-            interaural_mode         = [NoSo NoSp NpSo NpSp];
-            interaural_mode_label   = {'NoSo' 'NoSp' 'NpSo' 'NpSp'};
+            interaural_mode         = [NoSo NoSp NpSo NpSp NoSx];
+            interaural_mode_label   = {'NoSo' 'NoSp' 'NpSo' 'NpSp' 'NoSx'};
             
             if length(find(interaural_mode)) ~= 1
                 error('Unmasking condition not selected properly.\n')
@@ -653,8 +655,7 @@ classdef StimGuiProcedures
                     TDT.setTag('noise_sign_A',1); %A is right ear, contralat to Left IC
                     TDT.setTag('noise_sign_B',1); % 1 (in phase) or -1 (antiphase)
                     %TDT.setTag('phase_A',0); % phase shift in degrees; deprecated for 180 degrees, sets to 0 in RPvdsEX, see its manual
-                    %TDT.setTag('phase_B',0); % use phase and add in tag if you
-                        %want to include intermediate values down the line
+                    TDT.setTag('tone_phase_B',0); % for intermediate phase values see NoSx
                     TDT.setTag('tone_sign_A',1);
                     TDT.setTag('tone_sign_B',1);
             
@@ -662,7 +663,7 @@ classdef StimGuiProcedures
                     TDT.setTag('noise_sign_A',1);
                     TDT.setTag('noise_sign_B',1);
                     %TDT.setTag('phase_A',180); % phase shift in degrees
-                    %TDT.setTag('phase_B',0);
+                    TDT.setTag('tone_phase_B',0);
                     TDT.setTag('tone_sign_A',1);
                     TDT.setTag('tone_sign_B',-1);
             
@@ -670,7 +671,7 @@ classdef StimGuiProcedures
                     TDT.setTag('noise_sign_A',-1); % contralat (right) speaker is antiphase
                     TDT.setTag('noise_sign_B',1);
                     %TDT.setTag('phase_A',0); % phase shift in degrees
-                    %TDT.setTag('phase_B',0);
+                    TDT.setTag('tone_phase_B',0);
                     TDT.setTag('tone_sign_A',1);
                     TDT.setTag('tone_sign_B',1);
             
@@ -678,9 +679,17 @@ classdef StimGuiProcedures
                     TDT.setTag('noise_sign_A',-1); % contralat (right) speaker is antiphase
                     TDT.setTag('noise_sign_B',1);
                     %TDT.setTag('phase_A',180); % phase shift in degrees
-                    %TDT.setTag('phase_B',0);
+                    TDT.setTag('tone_phase_B',0);
                     TDT.setTag('tone_sign_A',1);
                     TDT.setTag('tone_sign_B',-1);
+                
+                case 5 %NoSx
+                    TDT.setTag('noise_sign_A',1); % contralat (right) speaker is in phase
+                    TDT.setTag('noise_sign_B',1); % 
+                    %TDT.setTag('phase_A',0); % for 180 degrees, sets to 0 in RPvdsEX, see its manual; use NoSpi
+                    TDT.setTag('tone_phase_B',(180/pi)*NoSx_phase); % convert phase to degrees (intermediate values)
+                    TDT.setTag('tone_sign_A',1);
+                    TDT.setTag('tone_sign_B',1);
         
             end
                     % interaural relation 1,2,3,4
@@ -689,6 +698,7 @@ classdef StimGuiProcedures
                     %   2   No  Spi    1            180
                     %   3   Npi So    -1              0
                     %   4   Npi Spi   -1            180
+                    %   5   No  Sx     1            0 < x < 180
             
             
             global RUNNING
@@ -795,6 +805,7 @@ classdef StimGuiProcedures
             DATA.averages               = averages;
             DATA.interaural_mode        = interaural_mode;
             DATA.interaural_mode_label  = interaural_mode_label;
+            DATA.NoSx_phase             = NoSx_phase;
             DATA.interleaveNoise        = interleaveNoise;
             DATA.shuffleTone_dBs        = shuffleTone_dBs;
             DATA.data_orig              = data;
