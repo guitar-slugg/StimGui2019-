@@ -14,7 +14,7 @@ classdef StimGuiProcedures
             
            StimGuiProcedures.writeSettings(TDT, SETTINGS);
            
-           acq_samples=  TDT.ms2Samples(SETTINGS.acquire_length_ms);
+           acq_samples =  TDT.ms2Samples(SETTINGS.acquire_length_ms);
            
            TDT.setTag('amplitude', SETTINGS.stim_voltage_V);  %volts
            TDT.setTag('amp_B', SETTINGS.stim_voltage_V_B);  %volts
@@ -1304,6 +1304,9 @@ classdef StimGuiProcedures
              TDT.setTag('outHPF', SETTINGS.hpf_out_hz);  %Hz
              
              TDT.setTag('dF', SETTINGS.freq_shift_hz);
+             
+            acq_samples = TDT.ms2Samples(SETTINGS.acquire_length_ms);
+            TDT.setTag('acq_samples', acq_samples); % total acquired samples (stimulus time + silence acquired)
              
              
              %0.1 ms built in delay...
